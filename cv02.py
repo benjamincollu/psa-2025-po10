@@ -8,7 +8,7 @@ class LP():
         self._duration = duration
     
     def to_string(self):
-        out = "| {1:4} | {0:^20} | {2:20} | {3:3} |".format(self._name, self._year, self._artist, self._duration)
+        out = "| {1:4} | {0:^20} | {2:20} | {3:8} |".format(self._name, self._year, self._artist, self._duration)
         return out
 
 class Library():
@@ -18,8 +18,8 @@ class Library():
     def insert_LP(self, lp):
         self._library.append(lp)
     
-    def delete_LP(self, lp):
-        self._library.remove(lp)
+    def delete_LP(self, index):
+        self._library.pop(index)
     
     def clear_library(self):
         self._library.clear()
@@ -31,12 +31,13 @@ class Library():
         self.insert_LP(LP("Swimming", 2018, "Mac Miller", 120))
     
     def to_string(self):
-        out = "| -------------------------------- |\n"
-        out += "| Year | Title | Artist | Duration |\n"
-        out += "| -------------------------------- |\n"
+        out = "|{}|\n".format("-"*68)
+        out += "| ID | Year | {:^20} | {:^20} | Duration |\n".format("Title", "Artist")
+        i = 0
         for lp in self._library:
-            out += lp.to_string() + "\n"
-        out += "| -------------------------------- |"
+            out += "| {:2} {}\n".format(str(i), lp.to_string())
+            i += 1
+        out += "|{}|\n".format("-"*68)
         return out
 
 def main():
@@ -56,14 +57,22 @@ def main():
         choice = input("Select choice: ")
 
         if choice[0] == "1":
-            name = input("Name: ")
-            year = input("Year: ")
-            artist = input("Artist: ")
-            duration = input("Duration: ")
+            name = input("name: ")
+            year = input("year: ")
+            artist = input("artist: ")
+            duration = input("duration: ")
             library.insert_LP(LP(name, int(year), artist, int(duration)))
             continue
         if choice[0] == "2":
-            # TODO
+            print(library.to_string())
+            try:
+                index = int(input("index: "))
+                library.delete_LP(index)
+                print(library.to_string())
+            except ValueError:
+                print("ERROR: Selected value is not an index.")
+            except IndexError:
+                print("ERROR: Selected value is out of range.")
             continue
         if choice[0] == "3":
             library.clear_library()
