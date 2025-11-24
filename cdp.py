@@ -18,9 +18,10 @@ class Eth_frame():
 
     def to_bytes(self):
         # siet je big endian a preto musime niekedy obracat poradie byteov
+        payload_bytes = self._payload.to_bytes()
         out = mac_to_bytes(self._dmac) + mac_to_bytes(self._smac)
-        out += struct.pack("!H", len(self._payload.to_bytes()))
-        out += self._payload.to_bytes()
+        out += struct.pack("!H", len(payload_bytes))
+        out += payload_bytes
         return out
 
 class CDP_hdr():
@@ -51,7 +52,6 @@ class TLV_device_id(TLV):
     def __init__(self, device_id):
         super().__init__(0x0001)
         self._device_id = device_id
-        self._length += len(device_id)
     
     def to_bytes(self):
         device_bytes = self._device_id.encode()
@@ -59,6 +59,44 @@ class TLV_device_id(TLV):
         out = super().to_bytes()
         out += device_bytes
         return out
+
+class TLV_software(TLV):
+    def __init__(self, version):
+        super().__init__(0x0005)
+        self._version = version
+    
+    def to_bytes(self):
+        device_bytes = self._version.encode()
+        self._length += len(device_bytes)
+        out = super().to_bytes()
+        out += device_bytes
+        return out
+
+class TLV_platform(TLV_software):
+    def __init__(self):
+        super().__init__("PVSA_CDP")
+        self._type = 0x0006
+    
+    def to_bytes(self):
+        return super().to_bytes()
+
+class TLV_capabilities(TLV):
+    def __init__(self, router=True, host=False, switch=False):
+        super().__init__(0x0004)
+        self._isRouter = router
+        self._isHost = host
+        self._isSwitch = switch
+    
+    def to_bytes(self):
+        capabilities = 0
+        if self._isRouter:
+            capabilities += 1
+        if self._isHost:
+            capabilities += 16
+        if self._isSwitch:
+            capabilities += 8
+        self._length += 4 # add 4 bytes for capabilities field
+        return super().to_bytes() + struct.pack("!I", capabilities)
 
 class LLC():
     def __init__(self):
@@ -82,15 +120,20 @@ class LLC():
 if __name__ == "__main__":
     # Create a CDP packet
     IFACES.show()
-    iface = IFACES.dev_from_index(16)
+    iface = IFACES.dev_from_index(14)
     sock = conf.L2socket(iface=iface)
     
     frame = Eth_frame(smac="11:22:33:44:55:66")
     llc = LLC()
     cdp = CDP_hdr()
     TLV_device_id = TLV_device_id(device_id="BENJI")
-
     cdp.add_payload(TLV_device_id)
+    tlv_capabilities = TLV_capabilities(router=True, host=True, switch=True)
+    cdp.add_payload(tlv_capabilities)
+    tlv_software = TLV_software("20251124")
+    cdp.add_payload(tlv_software)
+    tlv_platform = TLV_platform()
+    cdp.add_payload(tlv_platform)
     llc.add_payload(cdp)
     frame.add_payload(llc)
 
